@@ -106,7 +106,10 @@ use PHPMailer\PHPMailer\Exception;
  *
  *                 2020/07/18 by PRoy - Added a private $errorPageInJSON defined from constructor to be used in loadErrorPage(): 
  *                                      if set, error page is sent through a JSON response named 'error500Html' ! 
- * 
+ *                 2020/11/23 by PRoy - Added ability to override debug config in constructor; 
+ *                                      Added possibility to pass an array of extra logging fields (i.e. user id), passed to constructor.
+ *                                      IMPORTANT: if using extra fields, then the array should ALSO be passed in logError() !!
+ *
  * @author K.D. https://codereview.stackexchange.com/questions/222650/php-error-handler-class
  *              https://codereview.stackexchange.com/users/201435/k-d
  *              
@@ -131,15 +134,19 @@ class ErrorHandler
   private $errorPagePath = __DIR__ . '/../error500.php';
   private $errorDetailsHeaderStyle = 'font-weight: bold;';
   private $failedToEmailMsgStyle = 'color: #dc3545 !important;';
+  private $extraLoggingFields = null;
 
   /**
    * Constructor - Sets up the class settings
    * @param boolean $errorPageInJSON send out error page in a JSON response
+   * @param boolean $debugMode set debug mode: report full error message in html error page? If null, then checks in config file for constant DEBUG_MODE, else defaults to false
+   * @param array $extraLoggingFields set an array of extra fields to log into array log and email<br/>
+   *                                  it's passed by reference, in case one might want to change these values dynamically as your their script it running!  
    */
-  public function __construct(bool $errorPageInJSON = false)
+  public function __construct(bool $errorPageInJSON = false, $debugMode = null, &$extraLoggingFields = null)
   {
-    //Update class properties from defined constants if they are set
-    $this->debugMode = ( defined(__NAMESPACE__ . '\DEBUG_MODE') ? DEBUG_MODE : $this->debugMode );
+    // update class properties from defined constants if they are set
+    $this->debugMode = $debugMode ?? ( defined(__NAMESPACE__ . '\DEBUG_MODE') ? DEBUG_MODE : $this->debugMode );
     $this->logErrors = ( defined(__NAMESPACE__ . '\LOG_ERRORS') ? LOG_ERRORS : $this->logErrors );
     $this->sendEmail = ( defined(__NAMESPACE__ . '\SEND_ERROR_EMAILS') ? SEND_ERROR_EMAILS : $this->sendEmail );
     $this->securityEmail = ( defined(__NAMESPACE__ . '\ERROR_REPORTING_EMAIL') && filter_var(ERROR_REPORTING_EMAIL, FILTER_VALIDATE_EMAIL) ? ERROR_REPORTING_EMAIL : $this->securityEmail );
@@ -149,6 +156,9 @@ class ErrorHandler
     $this->errorLogPath = ( defined(__NAMESPACE__ . '\ERROR_LOG_PATH') ? ERROR_LOG_PATH : $this->errorLogPath );
     $this->errorPagePath = ( defined(__NAMESPACE__ . '\ERROR_PAGE_PATH') ? ERROR_PAGE_PATH : $this->errorPagePath );
     $this->errorPageInJSON = $errorPageInJSON;
+
+    // set extra logging fields
+    $this->extraLoggingFields = &$extraLoggingFields;
 
     // if using PHPMailer
     $this->sendEmailWithPHPMailer = ( defined(__NAMESPACE__ . '\SEND_ERROR_EMAILS_WITH_PHPMAILER') ? SEND_ERROR_EMAILS_WITH_PHPMAILER : $this->sendEmailWithPHPMailer );
@@ -164,11 +174,12 @@ class ErrorHandler
   /**
    * Log / Email an error $ex to admins only, without displaying an error page 
    * @param Exception $ex
+   * @param array $extraLoggingFields set an array of extra fields to log
    * @return string Error ID used in logs
    */
-  public static function logError($ex)
+  public static function logError($ex, $extraLoggingFields = null)
   {
-    $eh = new self();
+    $eh = new self(false, null, $extraLoggingFields);
     $errid = $eh->genErrID();
     $eh->handleException($ex, $errid, false);
     unset($eh);
@@ -411,6 +422,15 @@ class ErrorHandler
         if ( $inclReferer ) $errorString .= '<span style="' . $this->errorDetailsHeaderStyle . '">Referrer:</span> ' . '<a href="' . $this->referer . '">' . $this->referer . '</a>' . $separator;
         $errorString .= '<span style="' . $this->errorDetailsHeaderStyle . '">Client IP:</span> ' . ( $this->getClientIP() ?: 'UNKNOWN' ) . $separator;
 
+        //Get extra fields to log  
+        if ( isset($this->extraLoggingFields) )
+        {
+          foreach ( $this->extraLoggingFields as $field => $value )
+          {
+            $errorString .= '<span style="' . $this->errorDetailsHeaderStyle . '">' . $field . ':</span> ' . $this->stringToWeb($value, true) . $separator;
+          }
+        }
+
         //If email failed to send, append to error message
         if ( ( $inclSendMailStatus ) and isset($this->failedToEmailMsg) ) $errorString .= '<span style="' . $this->failedToEmailMsgStyle . '">** Failed to send email to administrators: ' . $this->failedToEmailMsg . '</span>' . $separator;
       }
@@ -424,6 +444,15 @@ class ErrorHandler
         if ( $inclStacktrace ) $errorString .= 'Stacktrace: ' . $separator . $this->ex->getTraceAsString() . $separator;
         if ( $inclReferer ) $errorString .= 'Referrer: ' . $this->referer . $separator;
         $errorString .= 'Client IP: ' . ( $this->getClientIP() ?: 'UNKNOWN' ) . $separator;
+
+        //Get extra fields to log
+        if ( isset($this->extraLoggingFields) )
+        {
+          foreach ( $this->extraLoggingFields as $field => $value )
+          {
+            $errorString .= "$field: $value" . $separator;
+          }
+        }
 
         //If email failed to send, append to error message
         if ( ( $inclSendMailStatus ) and isset($this->failedToEmailMsg) ) $errorString .= '** Failed to send email to administrators: ' . $this->failedToEmailMsg . $separator;
@@ -483,6 +512,15 @@ class ErrorHandler
         if ( $inclReferer ) $errorString .= '<span style="' . $this->errorDetailsHeaderStyle . '">Referrer:</span> <a href="' . $this->referer . '">' . $this->referer . '</a>' . $separator;
         $errorString .= '<span style="' . $this->errorDetailsHeaderStyle . '">Client IP:</span> ' . ( $this->getClientIP() ?: 'UNKNOWN' ) . $separator;
 
+        //Get extra fields to log
+        if ( isset($this->extraLoggingFields) )
+        {
+          foreach ( $this->extraLoggingFields as $field => $value )
+          {
+            $errorString .= '<span style="' . $this->errorDetailsHeaderStyle . '">' . $field . ':</span> ' . $this->stringToWeb($value, true) . $separator;
+          }
+        }
+
         //If email failed to send, append to error message
         if ( ( $inclSendMailStatus ) and isset($this->failedToEmailMsg) ) $errorString .= '<span style="' . $this->failedToEmailMsgStyle . '">** Failed to send email to administrators: ' . $this->failedToEmailMsg . '</span>' . $separator;
       }
@@ -495,6 +533,15 @@ class ErrorHandler
         if ( ! isset($this->DontShowBacktrace) ) $errorString .= 'Backtrace: ' . $this->backTraceError() . $separator;
         if ( $inclReferer ) $errorString .= 'Referrer: ' . $this->referer . $separator;
         $errorString .= 'Client IP: ' . ( $this->getClientIP() ?: 'UNKNOWN' ) . $separator;
+
+        //Get extra fields to log
+        if ( isset($this->extraLoggingFields) )
+        {
+          foreach ( $this->extraLoggingFields as $field => $value )
+          {
+            $errorString .= "$field: $value" . $separator;
+          }
+        }
 
         //If email failed to send, append to error message
         if ( ( $inclSendMailStatus ) and isset($this->failedToEmailMsg) ) $errorString .= '** Failed to send email to administrators: ' . $this->failedToEmailMsg . $separator;

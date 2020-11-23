@@ -14,7 +14,8 @@ define(__NAMESPACE__ . '\APP_SUPPORT_EMAIL', 'support@testapp.com');
 /* Error handling settings (used in ErrorHandler.php)
  ===============================================*/
 
-//Set debug mode: report full error message in html error page? Only admins should see these...
+//Set debug mode: report full error message in html error page? 
+//Can be overwritten with ErrorHandler's constructor!!
 define(__NAMESPACE__ . '\DEBUG_MODE', true);
 
 //Log errors
