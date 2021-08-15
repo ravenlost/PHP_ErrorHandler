@@ -37,7 +37,7 @@ define(__NAMESPACE__ . '\ERROR_LOG_PATH', $_SERVER['DOCUMENT_ROOT'].'/../logs/er
 define(__NAMESPACE__ . '\ERROR_PAGE_PATH', __DIR__ . '/error500.php');
 
 //Default error message (if no error page is set or found)
-define(__NAMESPACE__ . '\PUBLIC_ERROR_MESSAGE', 'Looks like there was an error. We are already looking in to it!');
+define(__NAMESPACE__ . '\PUBLIC_ERROR_MESSAGE', 'Looks like there was an error. We are already looking into it!');
 
 /* PHPMailer configurations
  ===============================================*/

@@ -63,7 +63,7 @@ use PHPMailer\PHPMailer\Exception;
  * define(__NAMESPACE__ . '\ERROR_REPORTING_EMAIL', 'security@testapp.com');
  * define(__NAMESPACE__ . '\ERROR_LOG_PATH', $_SERVER['DOCUMENT_ROOT'].'/../logs/error_log.log');
  * define(__NAMESPACE__ . '\ERROR_PAGE_PATH', $_SERVER['DOCUMENT_ROOT'].'/error500.php');
- * define(__NAMESPACE__ . '\PUBLIC_ERROR_MESSAGE', 'Looks like there was an error. We are already looking in to it!');
+ * define(__NAMESPACE__ . '\PUBLIC_ERROR_MESSAGE', 'Looks like there was an error. We are already looking into it!');
  * 
  * and if using PHPMailer:
  * 
